@@ -163,9 +163,10 @@ class LenientSendA2uiToClientToolset(SendA2uiToClientToolset):
                 a2ui_json_payload = _parse_lenient_a2ui_payload(a2ui_json)
                 a2ui_catalog.validator.validate(a2ui_json_payload)
 
-                # Return validated payload — the SDK handles blob injection
-                # for Gemini Enterprise natively.
-                return {"validated_a2ui_json": a2ui_json_payload}
+                # Skip summarization — the SDK / Gemini Enterprise handles
+                # blob injection natively for validated A2UI payloads.
+                tool_context.actions.skip_summarization = True
+                return {self.VALIDATED_A2UI_JSON_KEY: a2ui_json_payload}
 
             except Exception as e:
                 err = f"Failed to call A2UI tool {self.TOOL_NAME}: {e}"
@@ -308,9 +309,16 @@ root_agent = Agent(
     generate_content_config={"temperature": 1.0},
     tools=[
         LenientSendA2uiToClientToolset(
-            a2ui_enabled=True,
-            a2ui_catalog=schema_manager.get_selected_catalog(),
-            a2ui_examples=A2UI_EXAMPLES,
+            a2ui_enabled=lambda ctx: ctx.state.get(
+                "system:a2ui_enabled", True
+            ),
+            a2ui_catalog=lambda ctx: ctx.state.get(
+                "system:a2ui_catalog",
+                schema_manager.get_selected_catalog(),
+            ),
+            a2ui_examples=lambda ctx: ctx.state.get(
+                "system:a2ui_examples", A2UI_EXAMPLES
+            ),
         ),
     ],
 )
