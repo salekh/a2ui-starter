@@ -267,71 +267,104 @@ class AgentEngineApp(AdkApp):
             os.environ["GOOGLE_CLOUD_LOCATION"] = gemini_location
 
     async def streaming_agent_run_with_events(self, request_json: str):
-        """Override to intercept events and convert A2UI tool results to blob parts.
+        """Override to intercept events and inject A2UI blobs into model text events.
 
-        The base AdkApp serializes ADK events directly — validated_a2ui_json
-        ends up as text. This override post-processes each serialized event
-        to convert A2UI function responses into inline_data blobs with the
-        application/a2ui+json MIME type that Gemini Enterprise can render.
+        GE only renders A2UI blobs when they appear alongside text parts in
+        model response events (like v0.8's after_model_callback). The SDK emits
+        A2UI data as separate function_response events in DIFFERENT chunks,
+        so we must buffer ALL chunks to splice blobs into the correct text event.
         """
-        chunk_idx = 0
+        # Buffer all chunks — we need cross-chunk blob injection
+        all_chunks = []
         async for response_chunk in super().streaming_agent_run_with_events(request_json):
-            chunk_idx += 1
-            # response_chunk is a dict with 'events', 'artifacts', 'session_id'
-            if isinstance(response_chunk, dict) and "events" in response_chunk:
-                logger.info(
-                    "streaming_agent_run_with_events: chunk %d has %d events",
-                    chunk_idx, len(response_chunk["events"])
-                )
-                processed_events = []
-                for i, event_dict in enumerate(response_chunk["events"]):
-                    # Log what parts each event has
-                    content = event_dict.get("content", {})
-                    parts = content.get("parts", []) if isinstance(content, dict) else []
-                    part_types = []
-                    for p in parts:
-                        if isinstance(p, dict):
-                            if p.get("function_response"):
-                                fr = p["function_response"]
-                                resp_keys = list(fr.get("response", {}).keys()) if isinstance(fr.get("response"), dict) else []
-                                part_types.append(f"fn_resp(name={fr.get('name')},keys={resp_keys})")
-                            elif p.get("text") is not None:
-                                txt = str(p["text"])
-                                has_a2ui = "validated_a2ui" in txt
-                                part_types.append(f"text(len={len(txt)},a2ui={has_a2ui})")
-                            elif p.get("inline_data"):
-                                part_types.append(f"blob(mime={p['inline_data'].get('mime_type')})")
-                            else:
-                                part_types.append(f"other({[k for k,v in p.items() if v is not None]})")
+            all_chunks.append(response_chunk)
+
+        logger.info("Buffered %d total response chunks", len(all_chunks))
+
+        # Flatten: collect all events across all chunks, process them
+        all_processed_events = []  # list of (chunk_idx, event_dict)
+        pending_blobs = []
+
+        for chunk_idx, response_chunk in enumerate(all_chunks):
+            if not (isinstance(response_chunk, dict) and "events" in response_chunk):
+                continue
+
+            events = response_chunk["events"]
+            logger.info("  chunk %d: %d events", chunk_idx, len(events))
+
+            for i, event_dict in enumerate(events):
+                content = event_dict.get("content", {})
+                parts = content.get("parts", []) if isinstance(content, dict) else []
+
+                # Log event parts
+                part_types = []
+                for p in parts:
+                    if isinstance(p, dict):
+                        if p.get("function_response"):
+                            fr = p["function_response"]
+                            resp_keys = list(fr.get("response", {}).keys()) if isinstance(fr.get("response"), dict) else []
+                            part_types.append(f"fn_resp(name={fr.get('name')},keys={resp_keys})")
+                        elif p.get("text") is not None:
+                            part_types.append(f"text(len={len(str(p['text']))})")
+                        elif p.get("inline_data"):
+                            part_types.append(f"blob(mime={p['inline_data'].get('mime_type')})")
+                        else:
+                            part_types.append(f"other({[k for k,v in p.items() if v is not None]})")
+                logger.info("    event[%d]: %s", i, part_types)
+
+                # Process the event (converts fn_resp to blobs + strips text)
+                processed = _process_event_dict(event_dict)
+                proc_content = processed.get("content", {})
+                proc_parts = proc_content.get("parts", []) if isinstance(proc_content, dict) else []
+
+                # Separate blob parts from non-blob parts
+                event_blobs = [p for p in proc_parts if isinstance(p, dict) and p.get("inline_data")]
+                event_other = [p for p in proc_parts if not (isinstance(p, dict) and p.get("inline_data"))]
+
+                if event_blobs:
+                    pending_blobs.extend(event_blobs)
+                    logger.info("    -> extracted %d blob parts", len(event_blobs))
+
+                # Keep event if it has non-blob content
+                if event_other:
+                    evt = {**processed}
+                    evt["content"] = {**proc_content, "parts": event_other}
+                    all_processed_events.append((chunk_idx, evt))
+                elif not event_blobs:
+                    all_processed_events.append((chunk_idx, processed))
+
+        # Inject pending blobs into the last text event (cross-chunk)
+        if pending_blobs:
+            injected = False
+            for j in range(len(all_processed_events) - 1, -1, -1):
+                _, evt = all_processed_events[j]
+                evt_content = evt.get("content", {})
+                evt_parts = evt_content.get("parts", []) if isinstance(evt_content, dict) else []
+                has_text = any(isinstance(p, dict) and p.get("text") is not None for p in evt_parts)
+                if has_text:
+                    new_parts = list(evt_parts) + pending_blobs
+                    evt = {**evt}
+                    evt["content"] = {**evt_content, "parts": new_parts}
+                    all_processed_events[j] = (all_processed_events[j][0], evt)
                     logger.info(
-                        "  event[%d]: %d parts: %s",
-                        i, len(parts), part_types
+                        "Injected %d A2UI blob(s) into event (now %d parts total)",
+                        len(pending_blobs), len(new_parts),
                     )
-                    processed = _process_event_dict(event_dict)
-                    # Log after processing
-                    new_parts = processed.get("content", {}).get("parts", []) if isinstance(processed.get("content"), dict) else []
-                    if len(new_parts) != len(parts):
-                        new_types = []
-                        for p in new_parts:
-                            if isinstance(p, dict):
-                                if p.get("inline_data"):
-                                    new_types.append(f"blob(mime={p['inline_data'].get('mime_type')})")
-                                elif p.get("text") is not None:
-                                    new_types.append(f"text(len={len(str(p['text']))})")
-                                else:
-                                    new_types.append("other")
-                        logger.info(
-                            "  -> converted to %d parts: %s",
-                            len(new_parts), new_types
-                        )
-                    processed_events.append(processed)
-                response_chunk = {**response_chunk, "events": processed_events}
-            else:
-                logger.info(
-                    "streaming_agent_run_with_events: chunk %d type=%s keys=%s",
-                    chunk_idx, type(response_chunk).__name__,
-                    list(response_chunk.keys()) if isinstance(response_chunk, dict) else "N/A"
-                )
+                    injected = True
+                    break
+
+            if not injected:
+                logger.warning("No text event found — appending blobs as synthetic event")
+                synthetic = {"content": {"parts": [{"text": ""}] + pending_blobs, "role": "model"}}
+                # Append to the last chunk
+                last_chunk_idx = len(all_chunks) - 1
+                all_processed_events.append((last_chunk_idx, synthetic))
+
+        # Reassemble chunks with processed events
+        for chunk_idx, response_chunk in enumerate(all_chunks):
+            if isinstance(response_chunk, dict) and "events" in response_chunk:
+                chunk_events = [evt for ci, evt in all_processed_events if ci == chunk_idx]
+                response_chunk = {**response_chunk, "events": chunk_events}
             yield response_chunk
 
     def register_feedback(self, feedback: dict[str, Any]) -> None:
