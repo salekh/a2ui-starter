@@ -11,9 +11,27 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+
+"""Agent Runtime entry point with A2UI event conversion for Gemini Enterprise.
+
+The default ``AdkApp`` serializes ADK events directly — the tool result
+``{validated_a2ui_json: [...]}`` ends up as text.  Gemini Enterprise needs
+it as an ``inline_data`` blob with ``application/a2ui+json`` MIME type.
+
+This module overrides ``streaming_agent_run_with_events`` to intercept
+ADK events and perform the conversion, along with maps proxy URL
+rewriting and catalog ID repair from the reference implementation.
+"""
+
+from __future__ import annotations
+
+import base64
+import json
 import logging
 import os
+import re
 from typing import Any
+from urllib.parse import parse_qs, urlencode
 
 import vertexai
 from dotenv import load_dotenv
@@ -28,6 +46,181 @@ from app.app_utils.typing import Feedback
 # Load environment variables from .env file at runtime
 load_dotenv()
 
+logger = logging.getLogger(__name__)
+
+# --------------------------------------------------------------------------- #
+# Constants
+# --------------------------------------------------------------------------- #
+
+A2UI_MIME_TYPE = "application/a2ui+json"
+VALIDATED_A2UI_JSON_KEY = "validated_a2ui_json"
+TOOL_NAME = "send_a2ui_json_to_client"
+
+# A2UI message types that must each travel as their own message.
+_A2UI_UPDATE_TYPES = (
+    "createSurface", "deleteSurface", "updateDataModel", "updateComponents",
+)
+
+# Matches the /maps/embed proxy URL produced by the LLM.
+_MAPS_PROXY_RE = re.compile(r"^/maps/embed\?(.+)$")
+
+
+# --------------------------------------------------------------------------- #
+# Maps proxy URL rewriting
+# --------------------------------------------------------------------------- #
+
+def _get_google_maps_api_key() -> str | None:
+    return os.environ.get("GOOGLE_MAPS_API_KEY")
+
+
+def _proxy_url_to_full_embed_url(url: str) -> str:
+    """Convert /maps/embed?mode=place&q=... to a full Google Maps Embed URL."""
+    match = _MAPS_PROXY_RE.match(url)
+    if not match:
+        return url
+    api_key = _get_google_maps_api_key()
+    if not api_key:
+        return url
+    params = parse_qs(match.group(1), keep_blank_values=True)
+    mode = params.pop("mode", ["place"])[0]
+    flat_params = {k: v[0] for k, v in params.items()}
+    qs = urlencode(flat_params)
+    return f"https://www.google.com/maps/embed/v1/{mode}?key={api_key}&{qs}"
+
+
+def _replace_proxy_urls(obj: Any) -> Any:
+    """Recursively walk A2UI data and replace /maps/embed proxy URLs."""
+    if isinstance(obj, str):
+        return _proxy_url_to_full_embed_url(obj)
+    if isinstance(obj, dict):
+        return {k: _replace_proxy_urls(v) for k, v in obj.items()}
+    if isinstance(obj, list):
+        return [_replace_proxy_urls(item) for item in obj]
+    return obj
+
+
+# --------------------------------------------------------------------------- #
+# A2UI message splitting and catalog repair
+# --------------------------------------------------------------------------- #
+
+def _split_combined_a2ui_data(data: dict) -> list[dict]:
+    """Split one A2UI message containing multiple update types into separate messages."""
+    types_present = [t for t in _A2UI_UPDATE_TYPES if t in data]
+    if len(types_present) <= 1:
+        return [data]
+    base = {"version": data["version"]} if "version" in data else {}
+    return [{**base, t: data[t]} for t in types_present]
+
+
+def _repair_catalog_id(msg: dict, valid_catalog_id: str) -> None:
+    """Overwrite a bad createSurface.catalogId with the session's active value."""
+    create_surface = msg.get("createSurface")
+    if not isinstance(create_surface, dict):
+        return
+    actual = create_surface.get("catalogId")
+    if actual == valid_catalog_id:
+        return
+    logger.warning(
+        "Repairing invalid createSurface.catalogId %r -> %r",
+        actual, valid_catalog_id,
+    )
+    create_surface["catalogId"] = valid_catalog_id
+
+
+# --------------------------------------------------------------------------- #
+# ADK Event -> A2UI blob conversion
+# --------------------------------------------------------------------------- #
+
+def _make_a2ui_blob_part(a2ui_data: dict) -> dict:
+    """Create an inline_data part with A2UI MIME type from a single A2UI message."""
+    raw = json.dumps(a2ui_data, separators=(",", ":"))
+    return {
+        "inline_data": {
+            "data": base64.b64encode(raw.encode()).decode(),
+            "mime_type": A2UI_MIME_TYPE,
+        }
+    }
+
+
+def _get_catalog_id_from_agent() -> str | None:
+    """Get the catalog ID from the agent's schema manager."""
+    try:
+        from app.agent import schema_manager
+        catalog = schema_manager.get_selected_catalog()
+        if hasattr(catalog, "id"):
+            return catalog.id
+        if hasattr(catalog, "catalog_id"):
+            return catalog.catalog_id
+        # Try to get from the config
+        config = catalog
+        if hasattr(config, "url"):
+            return config.url
+    except Exception:
+        pass
+    return None
+
+
+def _process_event_dict(event_dict: dict) -> dict:
+    """Process a serialized ADK event dict to convert A2UI function responses to blob parts.
+
+    Looks for function_response parts with the send_a2ui_json_to_client tool
+    that contain validated_a2ui_json, and replaces them with inline_data blob
+    parts.
+    """
+    content = event_dict.get("content")
+    if not content:
+        return event_dict
+
+    parts = content.get("parts")
+    if not parts:
+        return event_dict
+
+    new_parts = []
+    modified = False
+    valid_catalog_id = _get_catalog_id_from_agent()
+
+    for part in parts:
+        fn_response = part.get("function_response")
+        if not fn_response:
+            new_parts.append(part)
+            continue
+
+        # Check if this is the A2UI tool response
+        if fn_response.get("name") != TOOL_NAME:
+            new_parts.append(part)
+            continue
+
+        response = fn_response.get("response", {})
+        a2ui_payload = response.get(VALIDATED_A2UI_JSON_KEY)
+        if not a2ui_payload:
+            new_parts.append(part)
+            continue
+
+        # Convert validated A2UI JSON to blob parts
+        modified = True
+        logger.info("Converting A2UI tool response to %d blob parts", len(a2ui_payload))
+
+        for a2ui_msg in a2ui_payload:
+            # Split combined messages
+            for split_msg in _split_combined_a2ui_data(a2ui_msg):
+                # Rewrite maps proxy URLs
+                split_msg = _replace_proxy_urls(split_msg)
+                # Repair catalog ID
+                if valid_catalog_id:
+                    _repair_catalog_id(split_msg, valid_catalog_id)
+                # Create blob part
+                new_parts.append(_make_a2ui_blob_part(split_msg))
+
+    if modified:
+        event_dict = {**event_dict}
+        event_dict["content"] = {**content, "parts": new_parts}
+
+    return event_dict
+
+
+# --------------------------------------------------------------------------- #
+# AgentEngineApp with A2UI support
+# --------------------------------------------------------------------------- #
 
 class AgentEngineApp(AdkApp):
     def set_up(self) -> None:
@@ -40,6 +233,23 @@ class AgentEngineApp(AdkApp):
         self.logger = logging_client.logger(__name__)
         if gemini_location:
             os.environ["GOOGLE_CLOUD_LOCATION"] = gemini_location
+
+    async def streaming_agent_run_with_events(self, request_json: str):
+        """Override to intercept events and convert A2UI tool results to blob parts.
+
+        The base AdkApp serializes ADK events directly — validated_a2ui_json
+        ends up as text. This override post-processes each serialized event
+        to convert A2UI function responses into inline_data blobs with the
+        application/a2ui+json MIME type that Gemini Enterprise can render.
+        """
+        async for response_chunk in super().streaming_agent_run_with_events(request_json):
+            # response_chunk is a dict with 'events', 'artifacts', 'session_id'
+            if isinstance(response_chunk, dict) and "events" in response_chunk:
+                processed_events = []
+                for event_dict in response_chunk["events"]:
+                    processed_events.append(_process_event_dict(event_dict))
+                response_chunk = {**response_chunk, "events": processed_events}
+            yield response_chunk
 
     def register_feedback(self, feedback: dict[str, Any]) -> None:
         """Collect and log feedback."""
@@ -67,3 +277,4 @@ agent_runtime = AgentEngineApp(
         else InMemoryArtifactService()
     ),
 )
+

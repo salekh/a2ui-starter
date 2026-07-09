@@ -2,12 +2,5 @@
   "remote_agent_runtime_id": "projects/710258046947/locations/us-central1/reasoningEngines/2186671891681378304",
   "deployment_target": "agent_runtime",
   "is_a2a": false,
-  "deployment_timestamp": "2026-07-09T14:30:51.006241",
-  "pending_operation": {
-    "operation_name": "projects/710258046947/locations/us-central1/reasoningEngines/2186671891681378304/operations/8957760955643592704",
-    "project": "sa-learning-1",
-    "location": "us-central1",
-    "deployment_target": "agent_runtime",
-    "started_at": "2026-07-09T14:33:18.062445+00:00"
-  }
+  "deployment_timestamp": "2026-07-09T14:55:41.934021"
 }
