@@ -252,13 +252,64 @@ class AgentEngineApp(AdkApp):
         to convert A2UI function responses into inline_data blobs with the
         application/a2ui+json MIME type that Gemini Enterprise can render.
         """
+        chunk_idx = 0
         async for response_chunk in super().streaming_agent_run_with_events(request_json):
+            chunk_idx += 1
             # response_chunk is a dict with 'events', 'artifacts', 'session_id'
             if isinstance(response_chunk, dict) and "events" in response_chunk:
+                logger.info(
+                    "streaming_agent_run_with_events: chunk %d has %d events",
+                    chunk_idx, len(response_chunk["events"])
+                )
                 processed_events = []
-                for event_dict in response_chunk["events"]:
-                    processed_events.append(_process_event_dict(event_dict))
+                for i, event_dict in enumerate(response_chunk["events"]):
+                    # Log what parts each event has
+                    content = event_dict.get("content", {})
+                    parts = content.get("parts", []) if isinstance(content, dict) else []
+                    part_types = []
+                    for p in parts:
+                        if isinstance(p, dict):
+                            if p.get("function_response"):
+                                fr = p["function_response"]
+                                resp_keys = list(fr.get("response", {}).keys()) if isinstance(fr.get("response"), dict) else []
+                                part_types.append(f"fn_resp(name={fr.get('name')},keys={resp_keys})")
+                            elif p.get("text") is not None:
+                                txt = str(p["text"])
+                                has_a2ui = "validated_a2ui" in txt
+                                part_types.append(f"text(len={len(txt)},a2ui={has_a2ui})")
+                            elif p.get("inline_data"):
+                                part_types.append(f"blob(mime={p['inline_data'].get('mime_type')})")
+                            else:
+                                part_types.append(f"other({[k for k,v in p.items() if v is not None]})")
+                    logger.info(
+                        "  event[%d]: %d parts: %s",
+                        i, len(parts), part_types
+                    )
+                    processed = _process_event_dict(event_dict)
+                    # Log after processing
+                    new_parts = processed.get("content", {}).get("parts", []) if isinstance(processed.get("content"), dict) else []
+                    if len(new_parts) != len(parts):
+                        new_types = []
+                        for p in new_parts:
+                            if isinstance(p, dict):
+                                if p.get("inline_data"):
+                                    new_types.append(f"blob(mime={p['inline_data'].get('mime_type')})")
+                                elif p.get("text") is not None:
+                                    new_types.append(f"text(len={len(str(p['text']))})")
+                                else:
+                                    new_types.append("other")
+                        logger.info(
+                            "  -> converted to %d parts: %s",
+                            len(new_parts), new_types
+                        )
+                    processed_events.append(processed)
                 response_chunk = {**response_chunk, "events": processed_events}
+            else:
+                logger.info(
+                    "streaming_agent_run_with_events: chunk %d type=%s keys=%s",
+                    chunk_idx, type(response_chunk).__name__,
+                    list(response_chunk.keys()) if isinstance(response_chunk, dict) else "N/A"
+                )
             yield response_chunk
 
     def register_feedback(self, feedback: dict[str, Any]) -> None:
