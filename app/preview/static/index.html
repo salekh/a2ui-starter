@@ -1,0 +1,620 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>a2ui_starter — Google-brand widget preview</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" crossorigin />
+  <!-- Google Sans family is not on Google Fonts; the fallback stack does the job. -->
+  <link
+    href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap"
+    rel="stylesheet"
+    onerror="this.remove()"
+  />
+  <style>
+    :root {
+      /* Google brand palette (R5 findings) */
+      --brand-blue-500:  #4285F4;
+      --brand-blue-700:  #174EA6;
+      --brand-blue-100:  #D2E3FC;
+      --brand-green-500: #34A853;
+      --brand-green-100: #CEEAD6;
+      --brand-yellow-500:#FBBC04;
+      --brand-yellow-100:#FEEFC3;
+      --brand-red-500:   #EA4335;
+      --brand-red-100:   #FAD2CF;
+
+      /* Neutrals aligned to Material 3 surface roles */
+      --surface:                 #FFFFFF;
+      --surface-container-low:   #F8F9FA;
+      --surface-container:       #F1F3F4;
+      --surface-container-high:  #E8EAED;
+      --on-surface:              #202124;
+      --on-surface-variant:      #5F6368;
+      --outline:                 #DADCE0;
+      --outline-variant:         #E8EAED;
+
+      /* Type stack */
+      --font-display: "Google Sans", "Google Sans Flex", "Product Sans", Inter,
+                       system-ui, -apple-system, "Segoe UI", Roboto, Helvetica,
+                       Arial, sans-serif;
+      --font-body:    "Google Sans Text", "Google Sans", Inter, system-ui,
+                       -apple-system, "Segoe UI", Roboto, Helvetica, Arial,
+                       sans-serif;
+      --font-mono:    "Google Sans Code", "Google Sans Mono", "JetBrains Mono",
+                       "Fira Code", "SF Mono", ui-monospace, Menlo, Consolas,
+                       monospace;
+
+      --radius-sm: 8px;
+      --radius-md: 12px;
+      --radius-lg: 16px;
+      --radius-full: 9999px;
+
+      --shadow-1: 0 1px 2px rgba(0,0,0,.08), 0 1px 3px rgba(0,0,0,.06);
+      --shadow-2: 0 1px 2px rgba(0,0,0,.08), 0 2px 6px rgba(0,0,0,.10);
+    }
+
+    * { box-sizing: border-box; }
+    html, body {
+      margin: 0; padding: 0;
+      background: var(--surface-container-low);
+      color: var(--on-surface);
+      font-family: var(--font-body);
+      font-size: 14px; line-height: 1.5;
+      -webkit-font-smoothing: antialiased;
+    }
+    header {
+      background: var(--surface);
+      border-bottom: 1px solid var(--outline-variant);
+      padding: 16px 24px;
+      display: flex; align-items: baseline; gap: 16px;
+    }
+    header h1 {
+      margin: 0;
+      font-family: var(--font-display);
+      font-weight: 500;
+      font-size: 20px;
+      color: var(--on-surface);
+      letter-spacing: -0.01em;
+    }
+    header .subtitle {
+      color: var(--on-surface-variant);
+      font-size: 12px;
+    }
+    header .brand-strip {
+      margin-left: auto;
+      display: inline-flex; gap: 6px;
+    }
+    header .brand-strip span {
+      display: block; width: 12px; height: 12px; border-radius: 50%;
+    }
+    header .brand-strip .b { background: var(--brand-blue-500); }
+    header .brand-strip .r { background: var(--brand-red-500); }
+    header .brand-strip .y { background: var(--brand-yellow-500); }
+    header .brand-strip .g { background: var(--brand-green-500); }
+
+    main {
+      max-width: 960px;
+      margin: 0 auto;
+      padding: 24px 24px 96px;
+      display: flex; flex-direction: column; gap: 20px;
+    }
+
+    .surface-frame {
+      background: transparent;
+      display: flex; flex-direction: column; gap: 8px;
+    }
+    .surface-frame .surface-header {
+      display: flex; justify-content: space-between; align-items: center;
+      color: var(--on-surface-variant); font-size: 11px;
+      text-transform: uppercase; letter-spacing: 0.08em;
+    }
+    .surface-frame .surface-header button {
+      font-family: var(--font-body);
+      font-size: 11px;
+      background: transparent;
+      color: var(--brand-blue-500);
+      border: 1px solid var(--outline);
+      border-radius: var(--radius-full);
+      padding: 4px 10px;
+      cursor: pointer;
+    }
+    .surface-frame .surface-header button:hover {
+      background: var(--brand-blue-100);
+      border-color: var(--brand-blue-500);
+    }
+
+    /* --- Primitive component styles ------------------------------ */
+    .a2ui-row    { display: flex; flex-direction: row;    gap: 8px; align-items: stretch; }
+    .a2ui-column { display: flex; flex-direction: column; gap: 8px; align-items: stretch; }
+    .a2ui-list   { display: flex; flex-direction: column; gap: 8px; }
+    .a2ui-list.horizontal { flex-direction: row; }
+
+    .a2ui-row.align-start   { align-items: flex-start; }
+    .a2ui-row.align-center  { align-items: center; }
+    .a2ui-row.align-end     { align-items: flex-end; }
+    .a2ui-row.align-stretch { align-items: stretch; }
+    .a2ui-column.align-start   { align-items: flex-start; }
+    .a2ui-column.align-center  { align-items: center; }
+    .a2ui-column.align-end     { align-items: flex-end; }
+    .a2ui-column.align-stretch { align-items: stretch; }
+    .a2ui-row.justify-start        { justify-content: flex-start; }
+    .a2ui-row.justify-center       { justify-content: center; }
+    .a2ui-row.justify-end          { justify-content: flex-end; }
+    .a2ui-row.justify-spaceBetween { justify-content: space-between; }
+    .a2ui-row.justify-spaceAround  { justify-content: space-around; }
+    .a2ui-row.justify-spaceEvenly  { justify-content: space-evenly; }
+
+    .a2ui-card {
+      background: var(--surface);
+      border: 1px solid var(--outline);
+      border-radius: var(--radius-md);
+      padding: 16px;
+      box-shadow: var(--shadow-1);
+    }
+
+    .a2ui-text { color: var(--on-surface); }
+    .a2ui-text.variant-caption { color: var(--on-surface-variant); font-size: 12px; }
+    .a2ui-text.style-title-large   { font-family: var(--font-display); font-size: 22px; font-weight: 500; letter-spacing: -0.01em; }
+    .a2ui-text.style-title-medium  { font-family: var(--font-display); font-size: 16px; font-weight: 500; }
+    .a2ui-text.style-title-small   { font-family: var(--font-display); font-size: 14px; font-weight: 500; color: var(--on-surface-variant); }
+    .a2ui-text.style-label-large   { font-family: var(--font-body); font-size: 14px; font-weight: 500; }
+    .a2ui-text.style-label-medium  { font-family: var(--font-body); font-size: 12px; font-weight: 500; }
+    .a2ui-text.style-display-small { font-family: var(--font-display); font-size: 36px; font-weight: 500; letter-spacing: -0.02em; }
+    .a2ui-text.tabular             { font-variant-numeric: tabular-nums; }
+    .a2ui-text.align-right         { text-align: right; }
+    .a2ui-text.align-center        { text-align: center; }
+
+    .a2ui-button {
+      display: inline-flex; align-items: center; justify-content: center;
+      padding: 8px 16px; border-radius: var(--radius-full);
+      font-family: var(--font-body); font-size: 14px; font-weight: 500;
+      cursor: pointer;
+      border: 1px solid transparent;
+      background: var(--surface); color: var(--on-surface);
+    }
+    .a2ui-button.variant-primary {
+      background: var(--brand-blue-500); color: white;
+      border-color: var(--brand-blue-500);
+    }
+    .a2ui-button.variant-primary:hover { background: var(--brand-blue-700); }
+    .a2ui-button.variant-default {
+      background: var(--surface); border-color: var(--outline);
+      color: var(--brand-blue-500);
+    }
+    .a2ui-button.variant-borderless {
+      background: transparent; border-color: transparent;
+      color: var(--brand-blue-500);
+    }
+
+    .a2ui-icon {
+      display: inline-flex; align-items: center; justify-content: center;
+      width: 20px; height: 20px; flex: 0 0 20px;
+      background: var(--surface-container);
+      border-radius: var(--radius-full);
+      font-size: 12px; color: var(--on-surface-variant);
+      font-family: var(--font-mono);
+    }
+    .a2ui-icon.state-done   { background: var(--brand-green-100); color: var(--brand-green-500); }
+    .a2ui-icon.state-active { background: var(--brand-blue-100);  color: var(--brand-blue-500); }
+    .a2ui-icon.state-pending{ background: var(--surface-container-high); color: var(--on-surface-variant); }
+    .a2ui-icon.state-error  { background: var(--brand-red-100);   color: var(--brand-red-500); }
+    .a2ui-icon.variant-info    { background: var(--brand-blue-100);   color: var(--brand-blue-500); }
+    .a2ui-icon.variant-success { background: var(--brand-green-100);  color: var(--brand-green-500); }
+    .a2ui-icon.variant-warning { background: var(--brand-yellow-100); color: #7A5D00; }
+    .a2ui-icon.variant-error   { background: var(--brand-red-100);    color: var(--brand-red-500); }
+
+    .a2ui-divider {
+      border: none; height: 1px; background: var(--outline-variant); margin: 0;
+    }
+
+    .a2ui-image {
+      display: inline-block; max-width: 100%; border-radius: var(--radius-sm);
+    }
+    .a2ui-image.variant-icon { width: 16px; height: 16px; }
+
+    /* --- Chip styling (via TagChip's accessibility description) --- */
+    .a2ui-chip {
+      display: inline-flex; align-items: center; gap: 6px;
+      padding: 4px 10px; border-radius: var(--radius-full);
+      border: 1px solid var(--outline);
+      background: var(--surface);
+    }
+    .a2ui-chip.intent-info    { background: var(--brand-blue-100);  border-color: var(--brand-blue-100);  color: var(--brand-blue-700); }
+    .a2ui-chip.intent-success { background: var(--brand-green-100); border-color: var(--brand-green-100); color: #0F5323; }
+    .a2ui-chip.intent-warning { background: var(--brand-yellow-100);border-color: var(--brand-yellow-100);color: #7A5D00; }
+    .a2ui-chip.intent-error   { background: var(--brand-red-100);   border-color: var(--brand-red-100);   color: #8B1B12; }
+
+    /* --- Callout styling ------------------------------------------ */
+    .a2ui-callout { padding: 12px; }
+    .a2ui-callout.variant-info    { background: var(--brand-blue-100);  border-color: transparent; }
+    .a2ui-callout.variant-success { background: var(--brand-green-100); border-color: transparent; }
+    .a2ui-callout.variant-warning { background: var(--brand-yellow-100);border-color: transparent; color: #202124; }
+    .a2ui-callout.variant-error   { background: var(--brand-red-100);   border-color: transparent; }
+
+    /* --- Table look (DataTable uses List with a template Row) ----- */
+    .a2ui-list.datatable-body { border-top: 1px solid var(--outline-variant); }
+    .a2ui-list.datatable-body > .a2ui-row {
+      padding: 10px 8px;
+      border-bottom: 1px solid var(--outline-variant);
+      align-items: center;
+    }
+    .a2ui-list.datatable-body > .a2ui-row:nth-child(even) {
+      background: var(--surface-container-low);
+    }
+    .a2ui-row.datatable-header {
+      padding: 10px 8px;
+      background: var(--surface-container-low);
+      border-radius: var(--radius-sm) var(--radius-sm) 0 0;
+    }
+    .a2ui-row.datatable-header .a2ui-text {
+      font-family: var(--font-display);
+      font-size: 12px;
+      font-weight: 500;
+      color: var(--on-surface-variant);
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+    }
+    .datatable-cell { flex: 1 1 0; min-width: 0; }
+
+    /* --- Small unknown fallback ----------------------------------- */
+    .a2ui-unknown {
+      background: var(--brand-red-100); color: var(--brand-red-500);
+      padding: 4px 8px; border-radius: var(--radius-sm);
+      font-family: var(--font-mono); font-size: 12px;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>a2ui_starter</h1>
+    <span class="subtitle">Google-brand preview · v0.8 catalog · rendered from <code>/api/demo</code></span>
+    <span class="brand-strip"><span class="b"></span><span class="r"></span><span class="y"></span><span class="g"></span></span>
+  </header>
+  <main id="app">
+    <div class="a2ui-text variant-caption">Loading demo stream…</div>
+  </main>
+
+<script>
+(() => {
+  "use strict";
+
+  // ----- JSON-Pointer walk (RFC 6901, minimal) ------------------
+  function jsonPointer(obj, pointer) {
+    if (pointer === "" || pointer === "/") return obj;
+    if (!pointer.startsWith("/")) return undefined;
+    const parts = pointer.slice(1).split("/").map(p =>
+      p.replace(/~1/g, "/").replace(/~0/g, "~")
+    );
+    let cur = obj;
+    for (const key of parts) {
+      if (cur == null) return undefined;
+      if (Array.isArray(cur)) {
+        const idx = Number(key);
+        if (Number.isNaN(idx)) return undefined;
+        cur = cur[idx];
+      } else if (typeof cur === "object") {
+        cur = cur[key];
+      } else return undefined;
+    }
+    return cur;
+  }
+
+  // Resolve a DynamicString-like value: literal, {path}, or {call,args}.
+  function resolveDynamic(v, ctx) {
+    if (v == null) return "";
+    if (typeof v === "string" || typeof v === "number" || typeof v === "boolean") return v;
+    if (typeof v === "object") {
+      if ("path" in v) {
+        const scope = ctx.rowScope || ctx.dataModel;
+        const val = jsonPointer(scope, v.path);
+        return val == null ? "" : val;
+      }
+      if ("call" in v) return String(v.call);
+    }
+    return String(v);
+  }
+
+  // Parse a component's accessibility description into tokens.
+  function accTokens(comp) {
+    const desc = (comp.accessibility && comp.accessibility.description) || "";
+    return desc.split(";").map(t => t.trim()).filter(Boolean);
+  }
+  function accKey(comp, key) {
+    for (const tok of accTokens(comp)) {
+      const [k, ...rest] = tok.split("=");
+      if (k.trim() === key) return rest.join("=").trim();
+    }
+    return null;
+  }
+  function widgetMarker(comp) {
+    for (const tok of accTokens(comp)) {
+      if (tok.startsWith("a2ui-starter:widget=")) {
+        return tok.slice("a2ui-starter:widget=".length);
+      }
+    }
+    return null;
+  }
+
+  // Build a lookup {id: component}.
+  function indexComponents(components) {
+    const m = new Map();
+    for (const c of components) m.set(c.id, c);
+    return m;
+  }
+
+  // ----- Component renderers -----------------------------------
+  function renderText(comp, ctx) {
+    const el = document.createElement("div");
+    el.className = "a2ui-text";
+    if (comp.variant) el.classList.add("variant-" + comp.variant);
+    for (const tok of accTokens(comp)) {
+      if (tok.startsWith("a2ui-starter:")) continue;
+      if (tok.startsWith("stash_b64:")) continue;
+      if (tok.startsWith("align=")) el.classList.add("align-" + tok.slice(6));
+      if (tok === "tabular-nums") el.classList.add("tabular");
+      if ([
+        "title-large","title-medium","title-small",
+        "label-large","label-medium","display-small",
+      ].includes(tok)) el.classList.add("style-" + tok);
+    }
+    el.textContent = String(resolveDynamic(comp.text, ctx));
+    return el;
+  }
+
+  function renderContainer(comp, ctx, tag, extraClass) {
+    const el = document.createElement("div");
+    el.className = extraClass;
+    if (comp.align)   el.classList.add("align-" + comp.align);
+    if (comp.justify) el.classList.add("justify-" + comp.justify);
+    // Datatable header hint via id suffix
+    if (comp.id && /__hdr$/.test(comp.id)) el.classList.add("datatable-header");
+    return el;
+  }
+
+  function renderChildren(comp, ctx) {
+    // ChildList = array of ids OR {componentId, path}
+    const c = comp.children != null ? comp.children : (comp.child != null ? [comp.child] : []);
+    if (Array.isArray(c)) {
+      return c.map(id => renderId(id, ctx)).filter(Boolean);
+    }
+    if (c && typeof c === "object" && c.componentId && c.path) {
+      // list template: repeat template component for each item at path
+      const items = jsonPointer(ctx.dataModel, c.path) || [];
+      const results = [];
+      items.forEach((row, idx) => {
+        const childCtx = Object.assign({}, ctx, {
+          rowScope: row, rowIndex: idx,
+        });
+        const rendered = renderId(c.componentId, childCtx);
+        if (rendered) results.push(rendered);
+      });
+      return results;
+    }
+    return [];
+  }
+
+  function renderId(id, ctx) {
+    const comp = ctx.index.get(id);
+    if (!comp) {
+      const bad = document.createElement("span");
+      bad.className = "a2ui-unknown";
+      bad.textContent = "missing:" + id;
+      return bad;
+    }
+    return renderComponent(comp, ctx);
+  }
+
+  function renderComponent(comp, ctx) {
+    const kind = comp.component;
+    let el;
+    switch (kind) {
+      case "Text": return renderText(comp, ctx);
+      case "Icon": {
+        el = document.createElement("span");
+        el.className = "a2ui-icon";
+        const state = accKey(comp, "state");
+        const variant = accKey(comp, "variant");
+        if (state) el.classList.add("state-" + state);
+        if (variant) el.classList.add("variant-" + variant);
+        const name = (comp.name && typeof comp.name === "object") ? "•" : (comp.name || "•");
+        // shorten label to first char/glyph
+        el.textContent = String(name).slice(0, 2);
+        return el;
+      }
+      case "Divider": {
+        el = document.createElement("hr");
+        el.className = "a2ui-divider";
+        return el;
+      }
+      case "Image": {
+        el = document.createElement("img");
+        el.className = "a2ui-image";
+        if (comp.variant) el.classList.add("variant-" + comp.variant);
+        el.src = resolveDynamic(comp.url, ctx);
+        el.alt = resolveDynamic(comp.description, ctx) || "";
+        el.onerror = () => { el.style.display = "none"; };
+        return el;
+      }
+      case "Row":    el = renderContainer(comp, ctx, "div", "a2ui-row");    break;
+      case "Column": el = renderContainer(comp, ctx, "div", "a2ui-column"); break;
+      case "List":   el = renderContainer(comp, ctx, "div", "a2ui-list");   break;
+      case "Card":   el = renderContainer(comp, ctx, "div", "a2ui-card");   break;
+      case "Button": {
+        el = document.createElement("button");
+        el.className = "a2ui-button";
+        if (comp.variant) el.classList.add("variant-" + comp.variant);
+        const child = comp.child ? renderId(comp.child, ctx) : null;
+        if (child) el.appendChild(child);
+        el.addEventListener("click", () => {
+          const action = comp.action || {};
+          console.log("[a2ui] action", action);
+        });
+        return el;
+      }
+      default: {
+        el = document.createElement("div");
+        el.className = "a2ui-unknown";
+        el.textContent = "unknown:" + kind;
+        return el;
+      }
+    }
+    // Container: append children
+    for (const c of renderChildren(comp, ctx)) el.appendChild(c);
+    return el;
+  }
+
+  // ----- Data-model helpers ------------------------------------
+  function mergeSurfaces(stream) {
+    // group stream messages by surfaceId
+    const surfaces = new Map();
+    for (const env of stream) {
+      const key = Object.keys(env).find(k => k !== "version");
+      const msg = env[key] || {};
+      const sid = msg.surfaceId;
+      if (!sid) continue;
+      let s = surfaces.get(sid);
+      if (!s) {
+        s = { surfaceId: sid, catalogId: null, components: [], dataModel: {} };
+        surfaces.set(sid, s);
+      }
+      if (key === "createSurface") {
+        s.catalogId = msg.catalogId;
+        if (msg.components) s.components = msg.components;
+        if (msg.dataModel) s.dataModel = msg.dataModel;
+      } else if (key === "updateComponents") {
+        s.components = msg.components || [];
+      } else if (key === "updateDataModel") {
+        if (msg.path === "/" || msg.path === "") {
+          s.dataModel = msg.value == null ? {} : msg.value;
+        } else if (msg.value !== undefined) {
+          // shallow set — enough for the demo
+          const parts = msg.path.slice(1).split("/");
+          let cur = s.dataModel;
+          for (let i = 0; i < parts.length - 1; i++) {
+            const k = parts[i];
+            if (!(k in cur)) cur[k] = {};
+            cur = cur[k];
+          }
+          cur[parts[parts.length - 1]] = msg.value;
+        }
+      }
+    }
+    return Array.from(surfaces.values());
+  }
+
+  function decorateWidgetContainer(container, surface) {
+    // Find the widget marker on any component to decorate as chip/callout.
+    for (const c of surface.components) {
+      const marker = widgetMarker(c);
+      if (!marker) continue;
+      if (marker === "TagChip") {
+        const rootEl = container.firstElementChild;
+        if (rootEl) {
+          rootEl.classList.remove("a2ui-row");
+          rootEl.classList.add("a2ui-chip");
+          const intentTok = accTokens(c).find(t => t.startsWith("chip:"));
+          if (intentTok) {
+            const [, spec] = intentTok.split(":");
+            const [, intent] = spec.split("/");
+            if (intent) rootEl.classList.add("intent-" + intent);
+          }
+        }
+      }
+      if (marker === "Callout") {
+        const rootEl = container.firstElementChild;
+        if (rootEl) {
+          rootEl.classList.add("a2ui-callout");
+          const variantTok = accTokens(c).find(t => t.startsWith("callout:"));
+          if (variantTok) {
+            const [, variant] = variantTok.split(":");
+            if (variant) rootEl.classList.add("variant-" + variant);
+          }
+        }
+      }
+      if (marker === "DataTable") {
+        // Tag the body list + template row cells as datatable so CSS matches.
+        for (const cc of surface.components) {
+          if (cc.id && /__list$/.test(cc.id) && cc.component === "List") {
+            // find the DOM node by walking — easier: add a class after render pass.
+            const nodes = container.querySelectorAll(".a2ui-list");
+            nodes.forEach(n => n.classList.add("datatable-body"));
+          }
+        }
+        // add cell class to template row's children
+        const rows = container.querySelectorAll(".datatable-body .a2ui-row, .datatable-header");
+        rows.forEach(r => {
+          Array.from(r.children).forEach(ch => ch.classList.add("datatable-cell"));
+        });
+      }
+      break;
+    }
+  }
+
+  // ----- Top-level render --------------------------------------
+  function renderSurface(surface) {
+    const frame = document.createElement("section");
+    frame.className = "surface-frame";
+
+    const header = document.createElement("div");
+    header.className = "surface-header";
+    const title = document.createElement("span");
+    title.textContent = surface.surfaceId;
+    const btn = document.createElement("button");
+    btn.textContent = "Download JSON";
+    btn.addEventListener("click", () => {
+      const blob = new Blob(
+        [JSON.stringify(surface, null, 2)],
+        { type: "application/json" },
+      );
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = surface.surfaceId + ".json";
+      a.click();
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
+    });
+    header.appendChild(title);
+    header.appendChild(btn);
+    frame.appendChild(header);
+
+    const body = document.createElement("div");
+    frame.appendChild(body);
+
+    // find root: prefer a component whose id equals surfaceId - prefix,
+    // else the first component that has the widget marker.
+    const index = indexComponents(surface.components);
+    let rootId = null;
+    for (const c of surface.components) {
+      if (widgetMarker(c)) { rootId = c.id; break; }
+    }
+    if (!rootId && surface.components.length) rootId = surface.components[0].id;
+
+    const ctx = { index, dataModel: surface.dataModel || {} };
+    body.appendChild(renderId(rootId, ctx));
+    decorateWidgetContainer(body, surface);
+    return frame;
+  }
+
+  async function main() {
+    const app = document.getElementById("app");
+    try {
+      const resp = await fetch("/api/demo");
+      if (!resp.ok) throw new Error("HTTP " + resp.status);
+      const stream = await resp.json();
+      const surfaces = mergeSurfaces(stream);
+      app.innerHTML = "";
+      for (const s of surfaces) app.appendChild(renderSurface(s));
+    } catch (err) {
+      app.innerHTML = "";
+      const msg = document.createElement("div");
+      msg.className = "a2ui-unknown";
+      msg.textContent = "Failed to load demo: " + err;
+      app.appendChild(msg);
+    }
+  }
+  main();
+})();
+</script>
+</body>
+</html>

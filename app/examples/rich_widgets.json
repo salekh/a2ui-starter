@@ -1,0 +1,215 @@
+[
+  {
+    "beginRendering": {
+      "surfaceId": "analytics-dashboard",
+      "root": "root"
+    }
+  },
+  {
+    "surfaceUpdate": {
+      "surfaceId": "analytics-dashboard",
+      "components": [
+        {
+          "id": "root",
+          "component": {
+            "Column": {
+              "children": {
+                "explicitList": ["header", "status-row", "metrics-row", "details-card"]
+              }
+            }
+          }
+        },
+        {
+          "id": "header",
+          "component": {
+            "Text": {
+              "text": {"literalString": "System Analytics Dashboard"},
+              "usageHint": "h2"
+            }
+          }
+        },
+        {
+          "id": "status-row",
+          "component": {
+            "Row": {
+              "children": {
+                "explicitList": ["status-icon", "status-label"]
+              }
+            }
+          }
+        },
+        {
+          "id": "status-icon",
+          "component": {
+            "Icon": {
+              "name": {"literalString": "check"}
+            }
+          }
+        },
+        {
+          "id": "status-label",
+          "component": {
+            "Text": {
+              "text": {"literalString": "Live: All Systems Healthy"},
+              "usageHint": "body"
+            }
+          }
+        },
+        {
+          "id": "metrics-row",
+          "component": {
+            "Row": {
+              "children": {
+                "explicitList": ["cpu-card", "mem-card", "latency-card"]
+              }
+            }
+          }
+        },
+        {
+          "id": "cpu-card",
+          "component": {
+            "Card": {
+              "child": "cpu-content"
+            }
+          }
+        },
+        {
+          "id": "cpu-content",
+          "component": {
+            "Column": {
+              "children": {
+                "explicitList": ["cpu-title", "cpu-value"]
+              }
+            }
+          }
+        },
+        {
+          "id": "cpu-title",
+          "component": {
+            "Text": {
+              "text": {"literalString": "CPU Utilization"},
+              "usageHint": "caption"
+            }
+          }
+        },
+        {
+          "id": "cpu-value",
+          "component": {
+            "Text": {
+              "text": {"literalString": "42.8%"},
+              "usageHint": "h3"
+            }
+          }
+        },
+        {
+          "id": "mem-card",
+          "component": {
+            "Card": {
+              "child": "mem-content"
+            }
+          }
+        },
+        {
+          "id": "mem-content",
+          "component": {
+            "Column": {
+              "children": {
+                "explicitList": ["mem-title", "mem-value"]
+              }
+            }
+          }
+        },
+        {
+          "id": "mem-title",
+          "component": {
+            "Text": {
+              "text": {"literalString": "Memory Usage"},
+              "usageHint": "caption"
+            }
+          }
+        },
+        {
+          "id": "mem-value",
+          "component": {
+            "Text": {
+              "text": {"literalString": "68.2%"},
+              "usageHint": "h3"
+            }
+          }
+        },
+        {
+          "id": "latency-card",
+          "component": {
+            "Card": {
+              "child": "latency-content"
+            }
+          }
+        },
+        {
+          "id": "latency-content",
+          "component": {
+            "Column": {
+              "children": {
+                "explicitList": ["latency-title", "latency-value"]
+              }
+            }
+          }
+        },
+        {
+          "id": "latency-title",
+          "component": {
+            "Text": {
+              "text": {"literalString": "Avg Latency"},
+              "usageHint": "caption"
+            }
+          }
+        },
+        {
+          "id": "latency-value",
+          "component": {
+            "Text": {
+              "text": {"literalString": "124 ms"},
+              "usageHint": "h3"
+            }
+          }
+        },
+        {
+          "id": "details-card",
+          "component": {
+            "Card": {
+              "child": "details-content"
+            }
+          }
+        },
+        {
+          "id": "details-content",
+          "component": {
+            "Column": {
+              "children": {
+                "explicitList": ["details-title", "details-body"]
+              }
+            }
+          }
+        },
+        {
+          "id": "details-title",
+          "component": {
+            "Text": {
+              "text": {"literalString": "Resource Summary"},
+              "usageHint": "h4"
+            }
+          }
+        },
+        {
+          "id": "details-body",
+          "component": {
+            "Text": {
+              "text": {"literalString": "All cloud services are operating within normal parameters. CPU usage is moderate at 42.8%, memory is at a healthy 68.2%, and average API latency is well below the 200ms SLA threshold."},
+              "usageHint": "body"
+            }
+          }
+        }
+      ]
+    }
+  }
+]

@@ -1,0 +1,79 @@
+[
+  {
+    "beginRendering": {
+      "surfaceId": "directions-view",
+      "root": "root"
+    }
+  },
+  {
+    "surfaceUpdate": {
+      "surfaceId": "directions-view",
+      "components": [
+        {
+          "id": "root",
+          "component": {
+            "Column": {
+              "children": {
+                "explicitList": ["dir-header", "dir-card"]
+              }
+            }
+          }
+        },
+        {
+          "id": "dir-header",
+          "component": {
+            "Text": {
+              "text": {"literalString": "Directions"},
+              "usageHint": "h2"
+            }
+          }
+        },
+        {
+          "id": "dir-card",
+          "component": {
+            "Card": {
+              "child": "dir-details"
+            }
+          }
+        },
+        {
+          "id": "dir-details",
+          "component": {
+            "Column": {
+              "children": {
+                "explicitList": ["dir-from", "dir-to", "dir-note"]
+              }
+            }
+          }
+        },
+        {
+          "id": "dir-from",
+          "component": {
+            "Text": {
+              "text": {"literalString": "From: Santa Monica, CA"},
+              "usageHint": "body"
+            }
+          }
+        },
+        {
+          "id": "dir-to",
+          "component": {
+            "Text": {
+              "text": {"literalString": "To: Google Playa Vista, CA"},
+              "usageHint": "body"
+            }
+          }
+        },
+        {
+          "id": "dir-note",
+          "component": {
+            "Text": {
+              "text": {"literalString": "Estimated drive time: ~15 minutes via Lincoln Blvd."},
+              "usageHint": "caption"
+            }
+          }
+        }
+      ]
+    }
+  }
+]

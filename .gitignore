@@ -1,0 +1,79 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+.eggs/
+build/
+dist/
+**/dist
+
+# Unit test / coverage reports
+.pytest_cache/
+htmlcov/
+.tox/
+.nox/
+.coverage
+.coverage.*
+coverage.xml
+*.cover
+*.py,cover
+.hypothesis/
+
+# Type checkers
+.mypy_cache/
+.dmypy.json
+dmypy.json
+.ty/
+.pyre/
+
+# Environments
+.env
+.venv
+.venv*
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
+
+# Editors / IDEs
+.vscode/*
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
+.idea/
+*.swp
+*.sublime-workspace
+.history/*
+
+# OS
+.DS_Store
+Thumbs.db
+
+# ADK
+.adk/
+
+# Agent CLI specific
+.agents-cli-scripts/
+.google-agents-cli/
+.persist_vector_store
+.saved_chats
+.requirements.txt
+tmp*
+
+# Terraform
+.terraform*
+.Terraform*
+
+# Node (if any)
+**/node_modules
+npm-debug.log
+yarn-error.log
+
+# Ruff
+.ruff_cache/
+
+# Logs
+*.log

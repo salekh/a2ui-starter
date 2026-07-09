@@ -1,0 +1,53 @@
+[
+  {
+    "beginRendering": {
+      "surfaceId": "map-view",
+      "root": "root"
+    }
+  },
+  {
+    "surfaceUpdate": {
+      "surfaceId": "map-view",
+      "components": [
+        {
+          "id": "root",
+          "component": {
+            "Column": {
+              "children": {
+                "explicitList": ["map-header", "map-image", "map-details"]
+              }
+            }
+          }
+        },
+        {
+          "id": "map-header",
+          "component": {
+            "Text": {
+              "text": {"literalString": "Google Playa Vista"},
+              "usageHint": "h2"
+            }
+          }
+        },
+        {
+          "id": "map-image",
+          "component": {
+            "Image": {
+              "url": {"literalString": "https://maps.googleapis.com/maps/api/staticmap?center=Google+Playa+Vista,+Los+Angeles,+CA&zoom=15&size=600x300&maptype=roadmap&markers=color:red%7CGoogle+Playa+Vista,+Los+Angeles,+CA"},
+              "altText": {"literalString": "Map of Google Playa Vista"},
+              "fit": "cover"
+            }
+          }
+        },
+        {
+          "id": "map-details",
+          "component": {
+            "Text": {
+              "text": {"literalString": "12422 W Bluff Creek Dr, Los Angeles, CA 90094"},
+              "usageHint": "caption"
+            }
+          }
+        }
+      ]
+    }
+  }
+]
