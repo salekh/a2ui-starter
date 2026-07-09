@@ -1,9 +1,9 @@
-"""ADK Agent that emits A2UI rich widgets via the SDK toolset.
+"""ADK Agent that emits A2UI v1.0 rich widgets for Gemini Enterprise.
 
 Uses ``google-adk`` + ``a2ui-agent-sdk``'s ``SendA2uiToClientToolset``
-to give the model a proper ``send_a2ui_json_to_client`` tool. The SDK
-validates A2UI JSON and injects blobs correctly — no more fragile
-text-parsing callbacks.
+to give the model a proper ``send_a2ui_json_to_client`` tool.  The SDK
+validates A2UI JSON and the Gemini Enterprise renderer handles v1.0
+natively — no blob injection callbacks needed.
 """
 
 from __future__ import annotations
@@ -20,7 +20,7 @@ import vertexai
 from a2ui.basic_catalog.provider import BasicCatalog
 from a2ui.parser.payload_fixer import parse_and_fix
 from a2ui.schema.common_modifiers import remove_strict_validation
-from a2ui.schema.constants import VERSION_0_8
+from a2ui.schema.constants import VERSION_0_9_1
 from a2ui.schema.manager import A2uiSchemaManager
 from google.adk import models as _adk_models
 from google.adk.agents import Agent
@@ -80,11 +80,6 @@ def run_demo() -> list[dict]:
         surface_id = f"surface_{widget.id}"
         stream.extend(widget_to_a2ui_stream(surface_id, widget))
     return stream
-
-
-# --------------------------------------------------------------------------- #
-# (Custom catalog provider removed — v0.8 uses only BasicCatalog)
-# --------------------------------------------------------------------------- #
 
 
 # --------------------------------------------------------------------------- #
@@ -168,13 +163,9 @@ class LenientSendA2uiToClientToolset(SendA2uiToClientToolset):
                 a2ui_json_payload = _parse_lenient_a2ui_payload(a2ui_json)
                 a2ui_catalog.validator.validate(a2ui_json_payload)
 
-                # Stash validated messages for the after_model_callback to
-                # inject as blobs when the model generates its summary.
-                tool_context.state[_A2UI_PENDING_KEY] = a2ui_json_payload
-
-                # Do NOT skip summarization — the model needs a second call
-                # so after_model_callback can fire and inject blobs.
-                return {"result": "A2UI components rendered successfully."}
+                # Return validated payload — the SDK handles blob injection
+                # for Gemini Enterprise natively.
+                return {"validated_a2ui_json": a2ui_json_payload}
 
             except Exception as e:
                 err = f"Failed to call A2UI tool {self.TOOL_NAME}: {e}"
@@ -187,11 +178,12 @@ class LenientSendA2uiToClientToolset(SendA2uiToClientToolset):
 # Schema Manager + System Prompt
 # --------------------------------------------------------------------------- #
 
+# Use v0.9.1 catalog (v1.0 uses same components with flat format)
 schema_manager = A2uiSchemaManager(
-    version=VERSION_0_8,
+    version=VERSION_0_9_1,
     catalogs=[
         BasicCatalog.get_config(
-            version=VERSION_0_8,
+            version=VERSION_0_9_1,
             examples_path=str(EXAMPLES_DIR),
         ),
     ],
@@ -224,45 +216,45 @@ WORKFLOW_DESCRIPTION = """\
 
 2.  **Select Example:** Based on the intent, choose the correct example.
     * **Rich Widget Demo** -> Use `---BEGIN RICH WIDGETS EXAMPLE---`.
-    * **Map View** -> Use `---BEGIN MAP EXAMPLE---`. Use the `WebFrameUrl` \
-component with URL `/maps/embed?mode=place&q=URL_ENCODED_QUERY`.
-    * **Directions** -> Use `---BEGIN DIRECTIONS EXAMPLE---`. Use `WebFrameUrl` \
-with URL `/maps/embed?mode=directions&origin=URL_ENCODED_ORIGIN&destination=URL_ENCODED_DESTINATION`.
+    * **Map View** -> Use `---BEGIN MAP EXAMPLE---`.
+    * **Directions** -> Use `---BEGIN DIRECTIONS EXAMPLE---`.
 
 3.  **Construct the JSON Payload:**
     * Use the chosen example as the base for the `a2ui_json` argument.
     * **Generate a new `surfaceId`** for each request.
-    * For maps: The URL must NOT include any API key.
+    * For maps: Use an Image component with Google Maps Static API URL.
     * For all surfaces: Every component tree MUST have a component with id `root`.
 
 4.  **Call the Tool:** Call `send_a2ui_json_to_client` with the payload.
 """
 
 UI_DESCRIPTION = """\
-**Available Components (v0.8):**
-- **Text**: `{"component":{"Text":{"text":{"literalString":"Hello"},"usageHint":"h2"}}}`
-- **Image**: `{"component":{"Image":{"url":{"literalString":"https://..."},"fit":"cover"}}}`
-- **Icon**: `{"component":{"Icon":{"name":{"literalString":"check_circle"}}}}`
-- **Row/Column**: Layout containers. `children: {"explicitList":["id1","id2"]}`.
-- **Card**: Container. `{"component":{"Card":{"child":"child-id"}}}`.
-- **Divider**: Visual separator. `{"component":{"Divider":{}}}`.
-- **Button**: `{"component":{"Button":{"child":"label-id"}}}`.
+**Available Components (v0.9.1 flat format):**
+- **Text**: `{"id":"my-id","component":"Text","text":"Hello","variant":"h2"}`
+- **Image**: `{"id":"my-id","component":"Image","url":"https://...","fit":"cover","altText":"description"}`
+- **Icon**: `{"id":"my-id","component":"Icon","name":"check_circle"}`
+- **Row/Column**: Layout containers. `{"id":"row1","component":"Row","children":["id1","id2"]}`
+- **Card**: Container. `{"id":"card1","component":"Card","child":"child-id"}`
+- **Divider**: Visual separator. `{"id":"div1","component":"Divider"}`
+- **Button**: `{"id":"btn1","component":"Button","child":"label-id"}`
+- **Tabs**: `{"id":"tabs1","component":"Tabs","tabs":[{"label":"Tab 1","child":"content-id1"}]}`
+- **List**: `{"id":"list1","component":"List","items":["item-id1","item-id2"]}`
+- **Slider**: `{"id":"s1","component":"Slider","min":0,"max":100,"value":50}`
+- **CheckBox**: `{"id":"cb1","component":"CheckBox","label":"Accept","value":true}`
+- **TextField**: `{"id":"tf1","component":"TextField","label":"Name","value":""}`
+- **AudioPlayer**: `{"id":"ap1","component":"AudioPlayer","url":"https://..."}`
+- **Video**: `{"id":"v1","component":"Video","url":"https://..."}`
 
-**v0.8 Key Rules:**
-- String properties use `{"literalString": "value"}` wrappers.
-- Component type is a DYNAMIC KEY inside `"component"`: `{"component":{"Text":{...}}}`.
-- `children` uses `{"explicitList": ["id1","id2"]}` (NOT a bare array).
+**v0.9.1 Flat Format Rules:**
+- Properties are FLAT on the component object (NOT nested inside a type wrapper).
+- String values are plain strings (NOT `{"literalString":"value"}`).
+- `children` is a plain array of string IDs (NOT `{"explicitList":[...]}`).
 - `child` is a plain string component ID.
+- Component type is the `component` field value: `"component":"Text"`.
 
 **Envelope Format:**
-1. `beginRendering`: `{"beginRendering":{"surfaceId":"my-surface","root":"root"}}`
-2. `surfaceUpdate`: `{"surfaceUpdate":{"surfaceId":"my-surface","components":[...]}}`
-3. `dataModelUpdate`: `{"dataModelUpdate":{"surfaceId":"my-surface","dataModel":{...}}}`
-
-**Google Maps Integration:**
-- For maps, use an Image component or plain text with a link — iframes are not \
-supported in v0.8.
-- Alternatively describe map details textually.
+1. `createSurface`: `{"version":"v0.9","createSurface":{"surfaceId":"my-surface","catalogId":"https://a2ui.org/specification/v0_9/basic_catalog.json"}}`
+2. `updateComponents`: `{"version":"v0.9","updateComponents":{"surfaceId":"my-surface","components":[...]}}`
 
 **Layout Rules:**
 - Every surface MUST have a component with `id: "root"`.
@@ -295,93 +287,6 @@ instruction = _re.sub(
 
 
 # --------------------------------------------------------------------------- #
-# Callbacks for ADK playground rendering
-# --------------------------------------------------------------------------- #
-
-_A2UI_BLOB_MARKER = b"<a2a_datapart_json>"
-_A2UI_PENDING_KEY = "temp:a2ui_pending"
-
-
-def _wrap_a2ui_part(a2ui_message: dict) -> Any:
-    """Wrap an A2UI message dict as an inline-data blob for the ADK dev-UI."""
-    import json as _json
-    from google.genai import types
-
-    datapart_json = _json.dumps({
-        "kind": "data",
-        "metadata": {"mimeType": "application/json+a2ui"},
-        "data": a2ui_message,
-    })
-    blob_data = (
-        _A2UI_BLOB_MARKER
-        + datapart_json.encode("utf-8")
-        + b"</a2a_datapart_json>"
-    )
-    return types.Part(
-        inline_data=types.Blob(data=blob_data, mime_type="text/plain")
-    )
-
-
-def _after_model_callback(callback_context, llm_response):
-    """Inject A2UI blobs from stashed tool responses into the model output.
-
-    After the model summarizes the tool call, this callback appends the
-    validated A2UI messages as inline-data blobs the ADK dev-UI can render.
-    """
-    from google.adk.models.llm_response import LlmResponse
-    from google.genai import types
-
-    pending = callback_context.state.get(_A2UI_PENDING_KEY)
-    if not pending:
-        return None
-
-    # Clear the pending state
-    callback_context.state[_A2UI_PENDING_KEY] = None
-
-    logger.info("after_model_callback: injecting %d A2UI blob(s)", len(pending))
-
-    # Build blob parts from the stashed messages
-    blob_parts = [_wrap_a2ui_part(msg) for msg in pending]
-
-    # Keep any text parts from the model's summary and add blobs
-    existing_parts = []
-    if llm_response and llm_response.content and llm_response.content.parts:
-        existing_parts = list(llm_response.content.parts)
-
-    all_parts = existing_parts + blob_parts
-
-    return LlmResponse(
-        content=types.Content(role="model", parts=all_parts),
-        custom_metadata={"a2a:response": True},
-    )
-
-
-def _before_model_callback(callback_context, llm_request):
-    """Strip echoed A2UI blobs from history so the model doesn't regurgitate."""
-    from google.genai import types
-
-    if not llm_request.contents:
-        return None
-
-    for content in llm_request.contents:
-        if not content.parts:
-            continue
-        clean_parts = [
-            types.Part(text="[A2UI component rendered]")
-            if (
-                p.inline_data
-                and p.inline_data.mime_type == "text/plain"
-                and _A2UI_BLOB_MARKER in (p.inline_data.data or b"")
-            )
-            else p
-            for p in content.parts
-        ]
-        content.parts[:] = clean_parts
-
-    return None
-
-
-# --------------------------------------------------------------------------- #
 # Agent + App
 # --------------------------------------------------------------------------- #
 
@@ -408,13 +313,9 @@ root_agent = Agent(
             a2ui_examples=A2UI_EXAMPLES,
         ),
     ],
-    before_model_callback=_before_model_callback,
-    after_model_callback=_after_model_callback,
 )
 
 app = App(
     root_agent=root_agent,
     name="app",
 )
-
-

@@ -1,77 +1,78 @@
 [
   {
-    "beginRendering": {
+    "version": "v0.9",
+    "createSurface": {
       "surfaceId": "directions-view",
-      "root": "root"
+      "catalogId": "https://a2ui.org/specification/v0_9/basic_catalog.json"
     }
   },
   {
-    "surfaceUpdate": {
+    "version": "v0.9",
+    "updateComponents": {
       "surfaceId": "directions-view",
       "components": [
         {
           "id": "root",
-          "component": {
-            "Column": {
-              "children": {
-                "explicitList": ["dir-header", "dir-card"]
-              }
-            }
-          }
+          "component": "Column",
+          "justify": "start",
+          "align": "stretch",
+          "children": ["dir-header", "dir-card"]
         },
         {
           "id": "dir-header",
-          "component": {
-            "Text": {
-              "text": {"literalString": "Directions"},
-              "usageHint": "h2"
-            }
-          }
+          "component": "Text",
+          "variant": "h2",
+          "text": "Directions: Mountain View to San Francisco"
         },
         {
           "id": "dir-card",
-          "component": {
-            "Card": {
-              "child": "dir-details"
-            }
-          }
+          "component": "Card",
+          "child": "dir-content"
         },
         {
-          "id": "dir-details",
-          "component": {
-            "Column": {
-              "children": {
-                "explicitList": ["dir-from", "dir-to", "dir-note"]
-              }
-            }
-          }
+          "id": "dir-content",
+          "component": "Column",
+          "children": ["dir-from", "dir-divider", "dir-to", "dir-footer"]
         },
         {
           "id": "dir-from",
-          "component": {
-            "Text": {
-              "text": {"literalString": "From: Santa Monica, CA"},
-              "usageHint": "body"
-            }
-          }
+          "component": "Row",
+          "children": ["dir-from-icon", "dir-from-text"]
+        },
+        {
+          "id": "dir-from-icon",
+          "component": "Icon",
+          "name": "my_location"
+        },
+        {
+          "id": "dir-from-text",
+          "component": "Text",
+          "text": "From: Mountain View, CA"
+        },
+        {
+          "id": "dir-divider",
+          "component": "Divider"
         },
         {
           "id": "dir-to",
-          "component": {
-            "Text": {
-              "text": {"literalString": "To: Google Playa Vista, CA"},
-              "usageHint": "body"
-            }
-          }
+          "component": "Row",
+          "children": ["dir-to-icon", "dir-to-text"]
         },
         {
-          "id": "dir-note",
-          "component": {
-            "Text": {
-              "text": {"literalString": "Estimated drive time: ~15 minutes via Lincoln Blvd."},
-              "usageHint": "caption"
-            }
-          }
+          "id": "dir-to-icon",
+          "component": "Icon",
+          "name": "place"
+        },
+        {
+          "id": "dir-to-text",
+          "component": "Text",
+          "text": "To: San Francisco, CA"
+        },
+        {
+          "id": "dir-footer",
+          "component": "Text",
+          "variant": "caption",
+          "text": "Estimated travel time: 45 min via US-101 N"
         }
       ]
     }

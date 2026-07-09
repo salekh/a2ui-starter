@@ -1,213 +1,137 @@
 [
   {
-    "beginRendering": {
-      "surfaceId": "analytics-dashboard",
-      "root": "root"
+    "version": "v0.9",
+    "createSurface": {
+      "surfaceId": "analytics-dashboard-v1",
+      "catalogId": "https://a2ui.org/specification/v0_9/basic_catalog.json"
     }
   },
   {
-    "surfaceUpdate": {
-      "surfaceId": "analytics-dashboard",
+    "version": "v0.9",
+    "updateComponents": {
+      "surfaceId": "analytics-dashboard-v1",
       "components": [
         {
           "id": "root",
-          "component": {
-            "Column": {
-              "children": {
-                "explicitList": ["header", "status-row", "metrics-row", "details-card"]
-              }
-            }
-          }
+          "component": "Column",
+          "justify": "start",
+          "align": "stretch",
+          "children": ["header", "status-row", "metrics-row", "details-card"]
         },
         {
           "id": "header",
-          "component": {
-            "Text": {
-              "text": {"literalString": "System Analytics Dashboard"},
-              "usageHint": "h2"
-            }
-          }
+          "component": "Text",
+          "variant": "h2",
+          "text": "System Analytics Dashboard"
         },
         {
           "id": "status-row",
-          "component": {
-            "Row": {
-              "children": {
-                "explicitList": ["status-icon", "status-label"]
-              }
-            }
-          }
+          "component": "Row",
+          "children": ["status-icon", "status-label"]
         },
         {
           "id": "status-icon",
-          "component": {
-            "Icon": {
-              "name": {"literalString": "check"}
-            }
-          }
+          "component": "Icon",
+          "name": "check"
         },
         {
           "id": "status-label",
-          "component": {
-            "Text": {
-              "text": {"literalString": "Live: All Systems Healthy"},
-              "usageHint": "body"
-            }
-          }
+          "component": "Text",
+          "variant": "body",
+          "text": "Live: All Systems Healthy"
         },
         {
           "id": "metrics-row",
-          "component": {
-            "Row": {
-              "children": {
-                "explicitList": ["cpu-card", "mem-card", "latency-card"]
-              }
-            }
-          }
+          "component": "Row",
+          "children": ["cpu-card", "mem-card", "latency-card"]
         },
         {
           "id": "cpu-card",
-          "component": {
-            "Card": {
-              "child": "cpu-content"
-            }
-          }
+          "component": "Card",
+          "child": "cpu-content"
         },
         {
           "id": "cpu-content",
-          "component": {
-            "Column": {
-              "children": {
-                "explicitList": ["cpu-title", "cpu-value"]
-              }
-            }
-          }
+          "component": "Column",
+          "children": ["cpu-title", "cpu-value"]
         },
         {
           "id": "cpu-title",
-          "component": {
-            "Text": {
-              "text": {"literalString": "CPU Utilization"},
-              "usageHint": "caption"
-            }
-          }
+          "component": "Text",
+          "variant": "caption",
+          "text": "CPU Utilization"
         },
         {
           "id": "cpu-value",
-          "component": {
-            "Text": {
-              "text": {"literalString": "42.8%"},
-              "usageHint": "h3"
-            }
-          }
+          "component": "Text",
+          "variant": "h3",
+          "text": "42.8%"
         },
         {
           "id": "mem-card",
-          "component": {
-            "Card": {
-              "child": "mem-content"
-            }
-          }
+          "component": "Card",
+          "child": "mem-content"
         },
         {
           "id": "mem-content",
-          "component": {
-            "Column": {
-              "children": {
-                "explicitList": ["mem-title", "mem-value"]
-              }
-            }
-          }
+          "component": "Column",
+          "children": ["mem-title", "mem-value"]
         },
         {
           "id": "mem-title",
-          "component": {
-            "Text": {
-              "text": {"literalString": "Memory Usage"},
-              "usageHint": "caption"
-            }
-          }
+          "component": "Text",
+          "variant": "caption",
+          "text": "Memory Usage"
         },
         {
           "id": "mem-value",
-          "component": {
-            "Text": {
-              "text": {"literalString": "68.2%"},
-              "usageHint": "h3"
-            }
-          }
+          "component": "Text",
+          "variant": "h3",
+          "text": "68.2%"
         },
         {
           "id": "latency-card",
-          "component": {
-            "Card": {
-              "child": "latency-content"
-            }
-          }
+          "component": "Card",
+          "child": "latency-content"
         },
         {
           "id": "latency-content",
-          "component": {
-            "Column": {
-              "children": {
-                "explicitList": ["latency-title", "latency-value"]
-              }
-            }
-          }
+          "component": "Column",
+          "children": ["latency-title", "latency-value"]
         },
         {
           "id": "latency-title",
-          "component": {
-            "Text": {
-              "text": {"literalString": "Avg Latency"},
-              "usageHint": "caption"
-            }
-          }
+          "component": "Text",
+          "variant": "caption",
+          "text": "Avg Latency"
         },
         {
           "id": "latency-value",
-          "component": {
-            "Text": {
-              "text": {"literalString": "124 ms"},
-              "usageHint": "h3"
-            }
-          }
+          "component": "Text",
+          "variant": "h3",
+          "text": "124 ms"
         },
         {
           "id": "details-card",
-          "component": {
-            "Card": {
-              "child": "details-content"
-            }
-          }
+          "component": "Card",
+          "child": "details-content"
         },
         {
           "id": "details-content",
-          "component": {
-            "Column": {
-              "children": {
-                "explicitList": ["details-title", "details-body"]
-              }
-            }
-          }
+          "component": "Column",
+          "children": ["details-title", "details-body"]
         },
         {
           "id": "details-title",
-          "component": {
-            "Text": {
-              "text": {"literalString": "Resource Summary"},
-              "usageHint": "h4"
-            }
-          }
+          "component": "Text",
+          "variant": "h4",
+          "text": "Resource Summary"
         },
         {
           "id": "details-body",
-          "component": {
-            "Text": {
-              "text": {"literalString": "All cloud services are operating within normal parameters. CPU usage is moderate at 42.8%, memory is at a healthy 68.2%, and average API latency is well below the 200ms SLA threshold."},
-              "usageHint": "body"
-            }
-          }
+          "component": "Text",
+          "variant": "body",
+          "text": "All cloud services are operating within normal parameters. CPU usage is moderate at 42.8%, memory is at a healthy 68.2%, and average API latency is well below the 200ms SLA threshold."
         }
       ]
     }
