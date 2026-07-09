@@ -108,11 +108,47 @@ def _parse_concatenated_json_values(payload: str) -> list[Any]:
     return values if len(values) > 1 else []
 
 
+def _repair_missing_commas(payload: str) -> str:
+    """Insert missing commas where json.JSONDecodeError reports them.
+
+    The model sometimes emits JSON like ``"key": "val" "key2": ...``
+    (missing comma between object entries or array elements).  We
+    repeatedly attempt ``json.loads`` and, when the error is
+    ``Expecting ',' delimiter``, splice a comma at the reported
+    position.  Up to 50 repairs to avoid infinite loops.
+    """
+    text = payload
+    for _ in range(50):
+        try:
+            json.loads(text)
+            return text  # valid now
+        except json.JSONDecodeError as exc:
+            if "Expecting ',' delimiter" not in str(exc):
+                return text  # different error, give up
+            pos = exc.pos
+            if pos is None or pos >= len(text):
+                return text
+            text = text[:pos] + "," + text[pos:]
+            logger.warning(
+                "Inserted missing comma at position %d in A2UI payload", pos
+            )
+    return text
+
+
 def _parse_lenient_a2ui_payload(payload: str) -> list[dict[str, Any]]:
     """Parse A2UI JSON, accepting accidentally concatenated top-level values."""
     try:
         return parse_and_fix(payload)
     except Exception as original_error:
+        # --- Recovery 1: insert missing commas ---
+        try:
+            repaired = _repair_missing_commas(payload)
+            if repaired != payload:
+                return parse_and_fix(repaired)
+        except Exception:
+            pass  # fall through to next recovery
+
+        # --- Recovery 2: concatenated top-level values ---
         try:
             values = _parse_concatenated_json_values(payload)
         except Exception as recovery_error:
