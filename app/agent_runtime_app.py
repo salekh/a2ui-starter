@@ -52,7 +52,7 @@ logger = logging.getLogger(__name__)
 # Constants
 # --------------------------------------------------------------------------- #
 
-A2UI_MIME_TYPE = "application/a2ui+json"
+A2UI_MIME_TYPE = "application/json+a2ui"
 VALIDATED_A2UI_JSON_KEY = "validated_a2ui_json"
 TOOL_NAME = "send_a2ui_json_to_client"
 
@@ -127,17 +127,27 @@ def _repair_catalog_id(msg: dict, valid_catalog_id: str) -> None:
     create_surface["catalogId"] = valid_catalog_id
 
 
-# --------------------------------------------------------------------------- #
-# ADK Event -> A2UI blob conversion
-# --------------------------------------------------------------------------- #
+_A2UI_BLOB_MARKER = "<a2a_datapart_json>"
+_A2UI_BLOB_MARKER_END = "</a2a_datapart_json>"
+
 
 def _make_a2ui_blob_part(a2ui_data: dict) -> dict:
-    """Create an inline_data part with A2UI MIME type from a single A2UI message."""
-    raw = json.dumps(a2ui_data, separators=(",", ":"))
+    """Create an inline_data part wrapped in a2a_datapart_json markers for GE.
+
+    Gemini Enterprise's streaming_agent_run_with_events path extracts A2UI
+    DataParts by looking for <a2a_datapart_json> XML markers in text/plain
+    blobs — it does NOT support raw application/a2ui+json inline_data.
+    """
+    datapart_json = json.dumps({
+        "kind": "data",
+        "metadata": {"mimeType": A2UI_MIME_TYPE},
+        "data": a2ui_data,
+    })
+    blob_data = _A2UI_BLOB_MARKER + datapart_json + _A2UI_BLOB_MARKER_END
     return {
         "inline_data": {
-            "data": base64.b64encode(raw.encode()).decode(),
-            "mime_type": A2UI_MIME_TYPE,
+            "data": base64.b64encode(blob_data.encode("utf-8")).decode(),
+            "mime_type": "text/plain",
         }
     }
 
