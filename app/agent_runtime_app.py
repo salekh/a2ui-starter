@@ -222,8 +222,30 @@ def _process_event_dict(event_dict: dict) -> dict:
                 new_parts.append(_make_a2ui_blob_part(split_msg))
 
     if modified:
+        # Also strip validated_a2ui_json from text parts in the same event.
+        # The model sometimes echoes the raw JSON in its text output alongside
+        # the function call. Since we've converted the payload to blobs, the
+        # text version is redundant and confusing.
+        cleaned_parts = []
+        for part in new_parts:
+            text = part.get("text") if isinstance(part, dict) else None
+            if text and VALIDATED_A2UI_JSON_KEY in str(text):
+                # Strip from the start of the JSON blob to the end
+                idx = str(text).find('{"' + VALIDATED_A2UI_JSON_KEY + '"')
+                if idx >= 0:
+                    cleaned_text = str(text)[:idx].rstrip()
+                    if cleaned_text:
+                        cleaned_parts.append({**part, "text": cleaned_text})
+                        logger.info(
+                            "Stripped validated_a2ui_json from text part "
+                            "(was %d chars, now %d)", len(str(text)), len(cleaned_text)
+                        )
+                    else:
+                        logger.info("Dropped empty text part after stripping a2ui JSON")
+                    continue
+            cleaned_parts.append(part)
         event_dict = {**event_dict}
-        event_dict["content"] = {**content, "parts": new_parts}
+        event_dict["content"] = {**content, "parts": cleaned_parts}
 
     return event_dict
 
